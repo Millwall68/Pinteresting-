@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Snake</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: Arial, sans-serif;
+        background: #111827;
+        color: #f9fafb;
+      }
+
+      .game {
+        width: min(92vw, 460px);
+        background: #1f2937;
+        border-radius: 12px;
+        padding: 14px;
+      }
+
+      .top {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 15px;
+      }
+
+      canvas {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        display: block;
+        background: #0b1220;
+        border-radius: 8px;
+      }
+
+      .buttons {
+        margin-top: 10px;
+        display: flex;
+        gap: 8px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+
+      .hint {
+        margin-top: 8px;
+        font-size: 13px;
+        color: #cbd5e1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game">
+      <div class="top">
+        <div>Score: <span id="score">0</span></div>
+        <div>Best: <span id="best">0</span></div>
+      </div>
+      <canvas id="board" width="420" height="420"></canvas>
+      <div class="buttons">
+        <button id="start">Start / Restart</button>
+      </div>
+      <div class="hint">Use Arrow Keys or WASD.</div>
+    </div>
+
+    <script>
+      const canvas = document.getElementById('board');
+      const ctx = canvas.getContext('2d');
+      const scoreEl = document.getElementById('score');
+      const bestEl = document.getElementById('best');
+      const startBtn = document.getElementById('start');
+
+      const gridSize = 21;
+      const cell = canvas.width / gridSize;
+      const speedMs = 110;
+
+      let snake = [];
+      let food = { x: 10, y: 10 };
+      let dir = { x: 1, y: 0 };
+      let nextDir = { x: 1, y: 0 };
+      let score = 0;
+      let best = Number(localStorage.getItem('snake-best') || 0);
+      let timer = null;
+      let running = false;
+
+      bestEl.textContent = best;
+
+      function reset() {
+        const mid = Math.floor(gridSize / 2);
+        snake = [
+          { x: mid - 1, y: mid },
+          { x: mid, y: mid },
+          { x: mid + 1, y: mid },
+        ];
+        dir = { x: 1, y: 0 };
+        nextDir = { x: 1, y: 0 };
+        score = 0;
+        scoreEl.textContent = score;
+        placeFood();
+        draw();
+      }
+
+      function placeFood() {
+        do {
+          food = {
+            x: Math.floor(Math.random() * gridSize),
+            y: Math.floor(Math.random() * gridSize),
+          };
+        } while (snake.some((part) => part.x === food.x && part.y === food.y));
+      }
+
+      function startGame() {
+        reset();
+        running = true;
+        clearInterval(timer);
+        timer = setInterval(tick, speedMs);
+      }
+
+      function stopGame() {
+        running = false;
+        clearInterval(timer);
+        alert('Game over! Your score: ' + score);
+
+        if (score > best) {
+          best = score;
+          localStorage.setItem('snake-best', String(best));
+          bestEl.textContent = best;
+        }
+      }
+
+      function tick() {
+        dir = nextDir;
+        const head = snake[snake.length - 1];
+        const newHead = { x: head.x + dir.x, y: head.y + dir.y };
+
+        const out =
+          newHead.x < 0 ||
+          newHead.y < 0 ||
+          newHead.x >= gridSize ||
+          newHead.y >= gridSize;
+
+        const willEat = newHead.x === food.x && newHead.y === food.y;
+        const bodyToCheck = willEat ? snake : snake.slice(1);
+        const hitSelf = bodyToCheck.some((part) => part.x === newHead.x && part.y === newHead.y);
+
+        if (out || hitSelf) {
+          stopGame();
+          return;
+        }
+
+        snake.push(newHead);
+
+        if (willEat) {
+          score += 1;
+          scoreEl.textContent = score;
+          placeFood();
+        } else {
+          snake.shift();
+        }
+
+        draw();
+      }
+
+      function draw() {
+        ctx.fillStyle = '#0b1220';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = 'rgba(148,163,184,0.15)';
+        for (let i = 0; i <= gridSize; i++) {
+          const p = i * cell;
+          ctx.beginPath();
+          ctx.moveTo(p, 0);
+          ctx.lineTo(p, canvas.height);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(0, p);
+          ctx.lineTo(canvas.width, p);
+          ctx.stroke();
+        }
+
+        snake.forEach((part, i) => {
+          ctx.fillStyle = i === snake.length - 1 ? '#4ade80' : '#38bdf8';
+          ctx.fillRect(part.x * cell + 2, part.y * cell + 2, cell - 4, cell - 4);
+        });
+
+        ctx.fillStyle = '#fb7185';
+        ctx.fillRect(food.x * cell + 2, food.y * cell + 2, cell - 4, cell - 4);
+      }
+
+      window.addEventListener('keydown', (e) => {
+        const key = e.key.toLowerCase();
+        const moves = {
+          arrowup: { x: 0, y: -1 },
+          w: { x: 0, y: -1 },
+          arrowdown: { x: 0, y: 1 },
+          s: { x: 0, y: 1 },
+          arrowleft: { x: -1, y: 0 },
+          a: { x: -1, y: 0 },
+          arrowright: { x: 1, y: 0 },
+          d: { x: 1, y: 0 },
+        };
+
+        const move = moves[key];
+        if (!move || !running) return;
+        e.preventDefault();
+
+        const reverse = move.x === -dir.x && move.y === -dir.y;
+        if (!reverse) nextDir = move;
+      });
+
+      startBtn.addEventListener('click', startGame);
+      reset();
+    </script>
+  </body>
+</html>

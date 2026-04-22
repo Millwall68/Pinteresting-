@@ -1,5 +1,5 @@
-# One Month Rails
+# Snake Game
 
-This is the pinteresting sample application for
-(*One Month Rails*)
-By Chris Lacey
+- Download the project.
+- Double-click `index.html`.
+- Play the game.
