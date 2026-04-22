@@ -90,7 +90,9 @@ function tick() {
     nextHead.x >= tileCount ||
     nextHead.y >= tileCount;
 
-  const hitsSelf = snake.some((cell) => cell.x === nextHead.x && cell.y === nextHead.y);
+  const willEat = nextHead.x === food.x && nextHead.y === food.y;
+  const bodyToCheck = willEat ? snake : snake.slice(1);
+  const hitsSelf = bodyToCheck.some((cell) => cell.x === nextHead.x && cell.y === nextHead.y);
 
   if (outOfBounds || hitsSelf) {
     endGame();
@@ -99,7 +101,7 @@ function tick() {
 
   snake.push(nextHead);
 
-  if (nextHead.x === food.x && nextHead.y === food.y) {
+  if (willEat) {
     score += 1;
     scoreEl.textContent = score;
     spawnFood();
@@ -181,6 +183,7 @@ window.addEventListener('keydown', (event) => {
 
   const intended = map[key];
   if (!intended || !running) return;
+  event.preventDefault();
 
   const isReverse =
     intended.x === -direction.x &&
